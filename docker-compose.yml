@@ -14,7 +14,62 @@ services:
     ports:
       - "5432:5432"
 
-# TODO добавить сервисы
+  gateway:
+    build: ./src/gateway
+    container_name: gateway
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - reservation-service
+      - payment-service
+      - loyalty-service
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8080
+      RESERVATION_URL: http://reservation-service:8070
+      PAYMENT_URL: http://payment-service:8060
+      LOYALTY_URL: http://loyalty-service:8050
+    ports:
+      - "8080:8080"
+
+  reservation-service:
+    build: ./src/reservation-service
+    container_name: reservation-service
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8070
+      DB_DSN: postgres://program:test@postgres:5432/reservations?sslmode=disable
+    ports:
+      - "8070:8070"
+
+  payment-service:
+    build: ./src/payment-service
+    container_name: payment-service
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8060
+      DB_DSN: postgres://program:test@postgres:5432/payments?sslmode=disable
+    ports:
+      - "8060:8060"
+
+  loyalty-service:
+    build: ./src/loyalty-service
+    container_name: loyalty-service
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8050
+      DB_DSN: postgres://program:test@postgres:5432/loyalties?sslmode=disable
+    ports:
+      - "8050:8050"
 
 volumes:
   db-data:
