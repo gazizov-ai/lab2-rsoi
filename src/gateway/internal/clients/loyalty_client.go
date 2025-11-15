@@ -40,3 +40,24 @@ func (c *LoyaltyClient) GetLoyalty(username string) (model.Loyalty, error) {
 
 	return lo, nil
 }
+
+func (c *LoyaltyClient) IncrementReservation(username string) error {
+	url := fmt.Sprintf("%s/internal/loyalty/%s", c.baseURL, username)
+
+	req, err := http.NewRequest(http.MethodPost, url, nil)
+	if err != nil {
+		return fmt.Errorf("build loyalty increment request: %w", err)
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("request loyalty increment: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("loyalty increment status %d", resp.StatusCode)
+	}
+
+	return nil
+}

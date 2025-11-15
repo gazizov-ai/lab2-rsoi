@@ -24,14 +24,15 @@ func (r *LoyaltyRepository) GetLoyalty(ctx context.Context, username string) (mo
 	var resp model.LoyaltyResponse
 
 	err := r.db.QueryRowContext(ctx,
-		`SELECT status, discount FROM loyalties WHERE username = $1`,
+		`SELECT status, discount, reservation_count FROM loyalties WHERE username = $1`,
 		username,
-	).Scan(&resp.Status, &resp.Discount)
+	).Scan(&resp.Status, &resp.Discount, &resp.ReservationCount)
 
 	if err == sql.ErrNoRows {
 		return model.LoyaltyResponse{
-			Status:   "Bronze",
-			Discount: 5,
+			Status:           "Bronze",
+			Discount:         5,
+			ReservationCount: 0,
 		}, nil
 	}
 
@@ -40,4 +41,15 @@ func (r *LoyaltyRepository) GetLoyalty(ctx context.Context, username string) (mo
 	}
 
 	return resp, nil
+}
+
+func (r *LoyaltyRepository) IncrementReservationCount(ctx context.Context, username string) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE loyalties SET reservation_count = reservation_count + 1 WHERE username = $1`,
+		username,
+	)
+	if err != nil {
+		return fmt.Errorf("increment reservation_count: %w", err)
+	}
+	return nil
 }

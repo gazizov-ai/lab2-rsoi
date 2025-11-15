@@ -80,7 +80,7 @@ func (c *ReservationClient) GetHotel(hotelUID string) (model.Hotel, error) {
 	return h, nil
 }
 
-func (c *ReservationClient) CreateReservation(req model.ReservationInternal) (model.ReservationInternal, error) {
+func (c *ReservationClient) CreateReservation(req model.ReservationInternal) (model.ReservationFull, error) {
 	var body = struct {
 		Username   string `json:"username"`
 		HotelUID   string `json:"hotelUid"`
@@ -101,47 +101,48 @@ func (c *ReservationClient) CreateReservation(req model.ReservationInternal) (mo
 
 	resp, err := c.client.Post(url, "application/json", bytes.NewReader(data))
 	if err != nil {
-		return model.ReservationInternal{}, fmt.Errorf("create reservation: %w", err)
+		return model.ReservationFull{}, fmt.Errorf("create reservation: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return model.ReservationInternal{}, fmt.Errorf("reservation status %d", resp.StatusCode)
+		return model.ReservationFull{}, fmt.Errorf("reservation status %d", resp.StatusCode)
 	}
 
-	var out model.ReservationInternal
+	var out model.ReservationFull
+
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return model.ReservationInternal{}, fmt.Errorf("decode reservation: %w", err)
+		return model.ReservationFull{}, fmt.Errorf("decode reservation: %w", err)
 	}
 
 	return out, nil
 }
 
-func (c *ReservationClient) GetReservation(uid string) (model.ReservationInternal, error) {
+func (c *ReservationClient) GetReservation(uid string) (model.ReservationFull, error) {
 	url := fmt.Sprintf("%s/internal/reservations/%s", c.baseURL, uid)
 
 	resp, err := c.client.Get(url)
 	if err != nil {
-		return model.ReservationInternal{}, fmt.Errorf("get reservation: %w", err)
+		return model.ReservationFull{}, fmt.Errorf("get reservation: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound {
-		return model.ReservationInternal{}, nil
+		return model.ReservationFull{}, nil
 	}
 	if resp.StatusCode != http.StatusOK {
-		return model.ReservationInternal{}, fmt.Errorf("reservation status %d", resp.StatusCode)
+		return model.ReservationFull{}, fmt.Errorf("reservation status %d", resp.StatusCode)
 	}
 
-	var out model.ReservationInternal
+	var out model.ReservationFull
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return model.ReservationInternal{}, fmt.Errorf("decode reservation: %w", err)
+		return model.ReservationFull{}, fmt.Errorf("decode reservation: %w", err)
 	}
 
 	return out, nil
 }
 
-func (c *ReservationClient) GetReservationsByUser(username string) ([]model.ReservationInternal, error) {
+func (c *ReservationClient) GetReservationsByUser(username string) ([]model.ReservationFull, error) {
 	url := fmt.Sprintf("%s/internal/reservations/byUser/%s", c.baseURL, username)
 
 	resp, err := c.client.Get(url)
@@ -154,7 +155,7 @@ func (c *ReservationClient) GetReservationsByUser(username string) ([]model.Rese
 		return nil, fmt.Errorf("reservations status %d", resp.StatusCode)
 	}
 
-	var out []model.ReservationInternal
+	var out []model.ReservationFull
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		return nil, fmt.Errorf("decode reservations: %w", err)
 	}

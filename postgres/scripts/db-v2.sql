@@ -13,6 +13,7 @@ CREATE TABLE payments
 (
     id          SERIAL PRIMARY KEY,
     payment_uid uuid        NOT NULL,
+    username    VARCHAR(80) NOT NULL UNIQUE,
     status      VARCHAR(20) NOT NULL
         CHECK (status IN ('PAID', 'CANCELED')),
     price       INT         NOT NULL

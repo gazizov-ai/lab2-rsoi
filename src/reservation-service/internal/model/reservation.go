@@ -6,6 +6,7 @@ type Reservation struct {
 	ReservationUID string    `json:"reservationUid"`
 	Username       string    `json:"username"`
 	HotelUID       string    `json:"hotelUid"`
+	HotelID        int       `json:"-"`
 	StartDate      time.Time `json:"startDate"`
 	EndDate        time.Time `json:"endDate"`
 	Status         string    `json:"status"`

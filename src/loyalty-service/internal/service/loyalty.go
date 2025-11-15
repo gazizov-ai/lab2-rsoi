@@ -22,3 +22,7 @@ func (s *LoyaltyService) Health(ctx context.Context) error {
 func (s *LoyaltyService) GetLoyalty(ctx context.Context, username string) (model.LoyaltyResponse, error) {
 	return s.repo.GetLoyalty(ctx, username)
 }
+
+func (s *LoyaltyService) IncrementReservationCount(ctx context.Context, username string) error {
+	return s.repo.IncrementReservationCount(ctx, username)
+}

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/gazizov-ai/lab2-rsoi/src/gateway/internal/clients"
@@ -56,11 +57,13 @@ func (s *GatewayService) ListUserReservations(ctx context.Context, username stri
 			return nil, err
 		}
 
+		h.FullAddress = fmt.Sprintf("%s, %s, %s", h.Country, h.City, h.Address)
+
 		result = append(result, model.ReservationShort{
 			ReservationUID: r.ReservationUID,
 			Hotel:          h,
-			StartDate:      r.StartDate,
-			EndDate:        r.EndDate,
+			StartDate:      r.StartDate.Format("2006-01-02"),
+			EndDate:        r.EndDate.Format("2006-01-02"),
 			Status:         r.Status,
 			Payment:        p,
 		})
@@ -86,6 +89,7 @@ func (s *GatewayService) GetReservation(ctx context.Context, username, reservati
 		return model.ReservationShort{}, err
 	}
 	p, err := s.paymentClient.GetPayment(r.PaymentUID)
+	h.FullAddress = fmt.Sprintf("%s, %s, %s", h.Country, h.City, h.Address)
 	if err != nil {
 		return model.ReservationShort{}, err
 	}
@@ -93,40 +97,46 @@ func (s *GatewayService) GetReservation(ctx context.Context, username, reservati
 	return model.ReservationShort{
 		ReservationUID: r.ReservationUID,
 		Hotel:          h,
-		StartDate:      r.StartDate,
-		EndDate:        r.EndDate,
+		StartDate:      r.StartDate.Format("2006-01-02"),
+		EndDate:        r.EndDate.Format("2006-01-02"),
 		Status:         r.Status,
 		Payment:        p,
 	}, nil
 }
 
-func (s *GatewayService) CreateReservation(ctx context.Context, username, hotelUID, startDateStr, endDateStr string) (model.ReservationShort, error) {
+func (s *GatewayService) CreateReservation(ctx context.Context, username, hotelUID, startDateStr, endDateStr string) (model.ReservationCreateResponse, error) {
 	hotel, err := s.reservationClient.GetHotel(hotelUID)
 	if err != nil {
-		return model.ReservationShort{}, err
+		return model.ReservationCreateResponse{}, err
 	}
 	if hotel.HotelUID == "" {
-		return model.ReservationShort{}, errors.New("hotel not found")
+		return model.ReservationCreateResponse{}, errors.New("hotel not found")
 	}
 
 	start, err := time.Parse("2006-01-02", startDateStr)
 	if err != nil {
-		return model.ReservationShort{}, err
+		return model.ReservationCreateResponse{}, err
 	}
 	end, err := time.Parse("2006-01-02", endDateStr)
 	if err != nil {
-		return model.ReservationShort{}, err
+		return model.ReservationCreateResponse{}, err
+	}
+
+	loyalty, err := s.loyaltyClient.GetLoyalty(username)
+	if err != nil {
+		return model.ReservationCreateResponse{}, err
 	}
 
 	days := int(end.Sub(start).Hours() / 24)
 	if days <= 0 {
 		days = 1
 	}
-	totalPrice := hotel.Price * days
+	basePrice := hotel.Price * days
+	finalPrice := basePrice - (basePrice * loyalty.Discount / 100)
 
-	payment, err := s.paymentClient.CreatePayment(username, totalPrice)
+	payment, err := s.paymentClient.CreatePayment(username, finalPrice)
 	if err != nil {
-		return model.ReservationShort{}, err
+		return model.ReservationCreateResponse{}, err
 	}
 
 	internalReq := model.ReservationInternal{
@@ -140,17 +150,27 @@ func (s *GatewayService) CreateReservation(ctx context.Context, username, hotelU
 
 	reservation, err := s.reservationClient.CreateReservation(internalReq)
 	if err != nil {
-		return model.ReservationShort{}, err
+		return model.ReservationCreateResponse{}, err
 	}
 
-	return model.ReservationShort{
+	if err := s.loyaltyClient.IncrementReservation(username); err != nil {
+		return model.ReservationCreateResponse{}, err
+	}
+
+	resp := model.ReservationCreateResponse{
 		ReservationUID: reservation.ReservationUID,
-		Hotel:          hotel,
-		StartDate:      reservation.StartDate,
-		EndDate:        reservation.EndDate,
+		HotelUID:       hotel.HotelUID,
+		StartDate:      startDateStr,
+		EndDate:        endDateStr,
+		Discount:       loyalty.Discount,
 		Status:         reservation.Status,
-		Payment:        payment,
-	}, nil
+		Payment: model.PaymentCreateResponse{
+			Status: payment.Status,
+			Price:  finalPrice,
+		},
+	}
+
+	return resp, nil
 }
 
 func (s *GatewayService) CancelReservation(ctx context.Context, username, reservationUID string) error {

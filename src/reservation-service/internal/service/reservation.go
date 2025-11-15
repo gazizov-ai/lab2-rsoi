@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 
@@ -22,13 +23,22 @@ func (s *ReservationService) Health(ctx context.Context) error {
 }
 
 func (s *ReservationService) CreateReservation(ctx context.Context, req model.CreateReservationRequest) (model.Reservation, error) {
+	hotelID, err := s.repo.GetHotelIDByUID(ctx, req.HotelUID)
+	if err != nil {
+		return model.Reservation{}, err
+	}
+	if hotelID == 0 {
+		return model.Reservation{}, fmt.Errorf("hotel not found")
+	}
+
 	res := model.Reservation{
 		ReservationUID: uuid.New().String(),
 		Username:       req.Username,
 		HotelUID:       req.HotelUID,
+		HotelID:        hotelID,
 		StartDate:      req.StartDate,
 		EndDate:        req.EndDate,
-		Status:         "BOOKED",
+		Status:         "PAID",
 		PaymentUID:     req.PaymentUID,
 	}
 

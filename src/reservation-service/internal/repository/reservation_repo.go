@@ -22,12 +22,12 @@ func (r *ReservationRepository) Ping(ctx context.Context) error {
 
 func (r *ReservationRepository) CreateReservation(ctx context.Context, res model.Reservation) error {
 	_, err := r.db.ExecContext(ctx, `
-		INSERT INTO reservations (reservation_uid, username, hotel_uid, start_date, end_date, status, payment_uid)
+		INSERT INTO reservations (reservation_uid, username, hotel_id, start_date, end_data, status, payment_uid)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`,
 		res.ReservationUID,
 		res.Username,
-		res.HotelUID,
+		res.HotelID,
 		res.StartDate,
 		res.EndDate,
 		res.Status,
@@ -43,13 +43,15 @@ func (r *ReservationRepository) GetReservation(ctx context.Context, uid string) 
 	var res model.Reservation
 
 	err := r.db.QueryRowContext(ctx, `
-		SELECT reservation_uid, username, hotel_uid, start_date, end_date, status, payment_uid
-		FROM reservations
+		SELECT r.reservation_uid, r.username, h.hotel_uid, r.hotel_id, r.start_date, r.end_data, r.status, r.payment_uid
+		FROM reservations r
+		JOIN hotels h ON h.id = r.hotel_id
 		WHERE reservation_uid = $1
 	`, uid).Scan(
 		&res.ReservationUID,
 		&res.Username,
 		&res.HotelUID,
+		&res.HotelID,
 		&res.StartDate,
 		&res.EndDate,
 		&res.Status,
@@ -68,8 +70,9 @@ func (r *ReservationRepository) GetReservation(ctx context.Context, uid string) 
 
 func (r *ReservationRepository) GetReservationsByUser(ctx context.Context, username string) ([]model.Reservation, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT reservation_uid, username, hotel_uid, start_date, end_date, status, payment_uid
-		FROM reservations
+		SELECT r.reservation_uid, r.username, h.hotel_uid, r.hotel_id, r.start_date, r.end_data, r.status, r.payment_uid
+		FROM reservations r
+		JOIN hotels h ON h.id = r.hotel_id
 		WHERE username = $1
 		ORDER BY start_date DESC
 	`, username)
@@ -85,6 +88,7 @@ func (r *ReservationRepository) GetReservationsByUser(ctx context.Context, usern
 			&rsv.ReservationUID,
 			&rsv.Username,
 			&rsv.HotelUID,
+			&rsv.HotelID,
 			&rsv.StartDate,
 			&rsv.EndDate,
 			&rsv.Status,
@@ -110,6 +114,21 @@ func (r *ReservationRepository) CancelReservation(ctx context.Context, uid strin
 		return fmt.Errorf("cancel reservation: %w", err)
 	}
 	return nil
+}
+
+func (r *ReservationRepository) GetHotelIDByUID(ctx context.Context, uid string) (int, error) {
+	var id int
+	err := r.db.QueryRowContext(ctx,
+		`SELECT id FROM hotels WHERE hotel_uid = $1`,
+		uid,
+	).Scan(&id)
+	if err == sql.ErrNoRows {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, fmt.Errorf("select hotel id: %w", err)
+	}
+	return id, nil
 }
 
 func (r *ReservationRepository) ListHotels(ctx context.Context, page, size int) ([]model.Hotel, int, error) {
