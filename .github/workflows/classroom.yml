@@ -23,7 +23,7 @@ jobs:
           go-version: "1.22"
 
       - name: Run unit tests (gateway)
-        working-directory: src/gateway/internal/httpserver
+        working-directory: src/gateway
         run: go test ./...
 
       - name: Build images
