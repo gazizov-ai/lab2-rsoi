@@ -6,7 +6,7 @@ import (
 	"github.com/gazizov-ai/lab2-rsoi/src/gateway/internal/service"
 )
 
-func NewRouter(s *service.GatewayService) http.Handler {
+func NewRouter(s service.Gateway) http.Handler {
 	mux := http.NewServeMux()
 
 	h := NewHandler(s)

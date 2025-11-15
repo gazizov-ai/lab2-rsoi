@@ -10,6 +10,17 @@ import (
 	"github.com/gazizov-ai/lab2-rsoi/src/gateway/internal/model"
 )
 
+type Gateway interface {
+	Health(ctx context.Context) error
+	ListHotels(ctx context.Context, page, size int) (model.HotelsPage, error)
+	GetLoyalty(username string) (model.Loyalty, error)
+	ListUserReservations(ctx context.Context, username string) ([]model.ReservationShort, error)
+	GetReservation(ctx context.Context, username, reservationUID string) (model.ReservationShort, error)
+	CreateReservation(ctx context.Context, username, hotelUID, startDateStr, endDateStr string) (model.ReservationCreateResponse, error)
+	CancelReservation(ctx context.Context, username, reservationUID string) error
+	Me(ctx context.Context, username string) (model.MeResponse, error)
+}
+
 type GatewayService struct {
 	reservationClient *clients.ReservationClient
 	paymentClient     *clients.PaymentClient
