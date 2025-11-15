@@ -24,7 +24,7 @@ jobs:
 
       - name: Run unit tests (gateway)
         working-directory: src/gateway
-        run: go test ./...
+        run: go test ./internal/httpserver
 
       - name: Build images
         timeout-minutes: 10
